@@ -35,7 +35,7 @@ OPTIONS:
   --sem-bic-rule=<rule>                    BIC rule [default: 1].
   --singularity-lambda=<sl>               Singularity lambda [default: 0.0].
 
-  bootstrapping.set_bootstrapping:
+  bootstrapping.bootstrapping:
   --number-resampling=<nr>                 Bootstrap iterations, 0 = off [default: 0].
   --percent-resample-size=<prs>            Percent resample size [default: 100].
   --no-add-original-dataset                Do not add original dataset.
@@ -43,19 +43,19 @@ OPTIONS:
   --resampling-ensemble=<re>               1=Preserved, 2=Highest, 3=Majority [default: 1].
   --seed=<seed>                            Random seed, -1 = off [default: -1].
 
-  knowledge.load_knowledge:
+  knowledge.parse_knowledge_txt:
   --knowledge=<path>                       Path to a Tetrad knowledge file.
 
   algorithm:
   --num-threads=<nt>                       Number of threads for the search, >= 1 [default: 1].
 
-  algorithm.run_fges:
+  algorithm.algorithm_fges:
   --symmetric-first-step                   Score both X->Y and Y->X in first step.
   --max-degree=<md>                        Maximum graph degree, -1 = unlimited [default: -1].
   --parallelized                           Parallelize the search.
   --faithfulness-assumed                    Assume one-edge faithfulness.
 
-  algorithm.run_boss:
+  algorithm.algorithm_boss:
   --num-starts=<ns>                        Number of random starts [default: 1].
   --use-bes                                Use final BES step.
   --time-lag=<tl>                          Time-series lag [default: 0].
@@ -76,17 +76,17 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from api import tetrad, data, score, bootstrapping, knowledge, algorithm, graph
+from api import tetrad, graph
 
 
 def main():
     arguments = docopt(__doc__, version='Pykumu 0.0.0.9000')
 
     if arguments["algorithm"] and arguments["run-fges"] and arguments["help"]:
-        print("Runs the FGES causal search algorithm using algorithm.run_fges().")
-        print("Calls: tetrad.start(), data.load_continuous(), score.use_sem_bic(),")
-        print("       bootstrapping.set_bootstrapping(), knowledge.load_knowledge(),")
-        print("       algorithm.run_fges(), graph.get_json().")
+        print("Runs the FGES causal search algorithm using algorithm.algorithm_fges().")
+        print("Calls: tetrad.tetrad_jvm_start(), data.transform_pandasdf_to_tetrad_boxdataset(), score.use_sem_bic(),")
+        print("       bootstrapping.bootstrapping(), knowledge.parse_knowledge_txt(),")
+        print("       algorithm.algorithm_fges(), graph.transform_graph_java_to_graph_json().")
 
     elif arguments["algorithm"] and arguments["run-fges"]:
 
@@ -94,16 +94,17 @@ def main():
         data_path = arguments["<data_path>"]
         output_path = arguments["<output_path>"]
 
-        # tetrad.start()
-        print(f"tetrad.start({jar_path!r})")
-        tetrad.start(jar_path)
+        # tetrad.tetrad_jvm_start()
+        print(f"tetrad.tetrad_jvm_start({jar_path!r})")
+        tetrad.tetrad_jvm_start(jar_path)
+        from api import data, score, bootstrapping, knowledge, algorithm
 
-        # data.load_continuous()
-        print(f"data.load_continuous(pd.read_csv({data_path!r}))")
+        # data.transform_pandasdf_to_tetrad_boxdataset()
+        print(f"data.transform_pandasdf_to_tetrad_boxdataset(pd.read_csv({data_path!r}))")
         df = pd.read_csv(data_path)
         df = df.astype(float)
         print(f"  -> {df.shape[0]} rows x {df.shape[1]} columns")
-        state = data.load_continuous(df)
+        state = data.transform_pandasdf_to_tetrad_boxdataset(df)
 
         # score.use_sem_bic()
         penalty_discount = float(arguments["--penalty-discount"])
@@ -116,11 +117,11 @@ def main():
             singularity_lambda=float(arguments["--singularity-lambda"]),
         )
 
-        # bootstrapping.set_bootstrapping()
+        # bootstrapping.bootstrapping()
         number_resampling = int(arguments["--number-resampling"])
         if number_resampling > 0:
-            print(f"bootstrapping.set_bootstrapping(number_resampling={number_resampling})")
-            bootstrapping.set_bootstrapping(
+            print(f"bootstrapping.bootstrapping(number_resampling={number_resampling})")
+            bootstrapping.bootstrapping(
                 state["params"],
                 number_resampling=number_resampling,
                 percent_resample_size=int(arguments["--percent-resample-size"]),
@@ -130,15 +131,15 @@ def main():
                 seed=int(arguments["--seed"]),
             )
 
-        # knowledge.load_knowledge()
+        # knowledge.parse_knowledge_txt()
         if arguments["--knowledge"]:
             knowledge_path = arguments["--knowledge"]
-            print(f"knowledge.load_knowledge({knowledge_path!r})")
-            state["knowledge"] = knowledge.load_knowledge(knowledge_path)
+            print(f"knowledge.parse_knowledge_txt({knowledge_path!r})")
+            state["knowledge"] = knowledge.parse_knowledge_txt(knowledge_path)
 
-        # algorithm.run_fges()
-        print("algorithm.run_fges()")
-        result = algorithm.run_fges(
+        # algorithm.algorithm_fges()
+        print("algorithm.algorithm_fges()")
+        result = algorithm.algorithm_fges(
             state["data"], state["params"], sem_bic, state["knowledge"],
             symmetric_first_step=arguments["--symmetric-first-step"],
             max_degree=int(arguments["--max-degree"]),
@@ -147,20 +148,20 @@ def main():
             num_threads=int(arguments["--num-threads"]),
         )
 
-        # graph.get_json()
+        # graph.transform_graph_java_to_graph_json()
         output_dir = os.path.dirname(os.path.abspath(output_path))
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-        json_str = graph.get_json(result["graph"])
+        json_str = graph.transform_graph_java_to_graph_json(result["graph"])
         with open(output_path, "w") as f:
             f.write(json_str)
-        print(f"graph.get_json() -> {output_path}")
+        print(f"graph.transform_graph_java_to_graph_json() -> {output_path}")
 
     elif arguments["algorithm"] and arguments["run-boss"] and arguments["help"]:
-        print("Runs the BOSS causal search algorithm using algorithm.run_boss().")
-        print("Calls: tetrad.start(), data.load_continuous(), score.use_sem_bic(),")
-        print("       bootstrapping.set_bootstrapping(), knowledge.load_knowledge(),")
-        print("       algorithm.run_boss(), graph.get_json().")
+        print("Runs the BOSS causal search algorithm using algorithm.algorithm_boss().")
+        print("Calls: tetrad.tetrad_jvm_start(), data.transform_pandasdf_to_tetrad_boxdataset(), score.use_sem_bic(),")
+        print("       bootstrapping.bootstrapping(), knowledge.parse_knowledge_txt(),")
+        print("       algorithm.algorithm_boss(), graph.transform_graph_java_to_graph_json().")
 
     elif arguments["algorithm"] and arguments["run-boss"]:
 
@@ -168,16 +169,17 @@ def main():
         data_path = arguments["<data_path>"]
         output_path = arguments["<output_path>"]
 
-        # tetrad.start()
-        print(f"tetrad.start({jar_path!r})")
-        tetrad.start(jar_path)
+        # tetrad.tetrad_jvm_start
+        print(f"tetrad.tetrad_jvm_start({jar_path!r})")
+        tetrad.tetrad_jvm_start(jar_path)
+        from api import data, score, bootstrapping, knowledge, algorithm
 
-        # data.load_continuous()
-        print(f"data.load_continuous(pd.read_csv({data_path!r}))")
+        # data.transform_pandasdf_to_tetrad_boxdataset()
+        print(f"data.transform_pandasdf_to_tetrad_boxdataset(pd.read_csv({data_path!r}))")
         df = pd.read_csv(data_path)
         df = df.astype(float)
         print(f"  -> {df.shape[0]} rows x {df.shape[1]} columns")
-        state = data.load_continuous(df)
+        state = data.transform_pandasdf_to_tetrad_boxdataset(df)
 
         # score.use_sem_bic()
         penalty_discount = float(arguments["--penalty-discount"])
@@ -190,11 +192,11 @@ def main():
             singularity_lambda=float(arguments["--singularity-lambda"]),
         )
 
-        # bootstrapping.set_bootstrapping()
+        # bootstrapping.bootstrapping()
         number_resampling = int(arguments["--number-resampling"])
         if number_resampling > 0:
-            print(f"bootstrapping.set_bootstrapping(number_resampling={number_resampling})")
-            bootstrapping.set_bootstrapping(
+            print(f"bootstrapping.bootstrapping(number_resampling={number_resampling})")
+            bootstrapping.bootstrapping(
                 state["params"],
                 number_resampling=number_resampling,
                 percent_resample_size=int(arguments["--percent-resample-size"]),
@@ -204,15 +206,15 @@ def main():
                 seed=int(arguments["--seed"]),
             )
 
-        # knowledge.load_knowledge()
+        # knowledge.parse_knowledge_txt
         if arguments["--knowledge"]:
             knowledge_path = arguments["--knowledge"]
-            print(f"knowledge.load_knowledge({knowledge_path!r})")
-            state["knowledge"] = knowledge.load_knowledge(knowledge_path)
+            print(f"knowledge.parse_knowledge_txt({knowledge_path!r})")
+            state["knowledge"] = knowledge.parse_knowledge_txt(knowledge_path)
 
-        # algorithm.run_boss()
-        print("algorithm.run_boss()")
-        result = algorithm.run_boss(
+        # algorithm.algorithm_boss()
+        print("algorithm.algorithm_boss()")
+        result = algorithm.algorithm_boss(
             state["data"], state["params"], sem_bic, state["knowledge"],
             num_starts=int(arguments["--num-starts"]),
             use_bes=arguments["--use-bes"],
@@ -222,14 +224,14 @@ def main():
             num_threads=int(arguments["--num-threads"]),
         )
 
-        # graph.get_json()
+        # graph.transform_graph_java_to_graph_json()
         output_dir = os.path.dirname(os.path.abspath(output_path))
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-        json_str = graph.get_json(result["graph"])
+        json_str = graph.transform_graph_java_to_graph_json(result["graph"])
         with open(output_path, "w") as f:
             f.write(json_str)
-        print(f"graph.get_json() -> {output_path}")
+        print(f"graph.transform_graph_java_to_graph_json() -> {output_path}")
 
     elif arguments["graph"] and arguments["convert-gui"] and arguments["help"]:
         print("Converts a Tetrad JSON graph to Tetrad GUI format using graph.convert_to_tetrad_gui_format().")
@@ -251,16 +253,16 @@ def main():
         print(f"  -> {output_path}")
 
     elif arguments["graph"] and arguments["parse"] and arguments["help"]:
-        print("Parses a Tetrad JSON graph file into CSV tables using graph.parse_graph().")
+        print("Parses a Tetrad JSON graph file into CSV tables using graph.parse_graph_json().")
 
     elif arguments["graph"] and arguments["parse"]:
 
         graph_path = arguments["<graph_path>"]
         output_dir = arguments["<output_dir>"]
 
-        # graph.parse_graph()
-        print(f"graph.parse_graph({graph_path!r})")
-        parsed = graph.parse_graph(graph_path)
+        # graph.parse_graph_json()
+        print(f"graph.parse_graph_json({graph_path!r})")
+        parsed = graph.parse_graph_json(graph_path)
 
         os.makedirs(output_dir, exist_ok=True)
 
