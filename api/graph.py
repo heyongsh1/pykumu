@@ -185,3 +185,32 @@ def find_cycles(g):
                 if len(full) > 3 and min(full) == full[0]:
                     cycles.append([g.vs[i]["name"] for i in full])
     return cycles
+
+
+def find_bidirectional_edges(edge_type_probabilities, min_probability=0.1):
+    pivot = (edge_type_probabilities
+             .pivot_table(index=["node1_name", "node2_name"], columns="edge_type",
+                          values="probability", aggfunc="sum", fill_value=0.0)
+             .reset_index())
+    for col in ["ta", "at"]:
+        if col not in pivot.columns:
+            pivot[col] = 0.0
+    result = pivot.rename(columns={"ta": "forward_probability", "at": "backward_probability"})
+    both = ((result["forward_probability"] >= min_probability)
+            & (result["backward_probability"] >= min_probability))
+    columns = ["node1_name", "node2_name", "forward_probability", "backward_probability"]
+    return result.loc[both, columns].reset_index(drop=True)
+
+
+def find_cycles_in_edgeset(edgeset):
+    import igraph as ig
+    directed = []
+    for _, row in edgeset.iterrows():
+        if row["endpoint1"] == "TAIL" and row["endpoint2"] == "ARROW":
+            directed.append((row["node1_name"], row["node2_name"]))
+        elif row["endpoint1"] == "ARROW" and row["endpoint2"] == "TAIL":
+            directed.append((row["node2_name"], row["node1_name"]))
+    if not directed:
+        return []
+    g = ig.Graph.TupleList(directed, directed=True)
+    return find_cycles(g)
