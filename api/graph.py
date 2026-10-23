@@ -188,6 +188,14 @@ def find_cycles(g):
 
 
 def find_bidirectional_edges(edge_type_probabilities, min_probability=0.1):
+    """Find edges whose direction is split across bootstrap runs.
+
+    :param edge_type_probabilities: The `'edge_type_probabilities'` DataFrame returned by
+        [parse_graph_json](#parse_graph_json).
+    :param min_probability: Minimum share of runs each direction must reach to be reported.
+    :returns: DataFrame with `node1_name`, `node2_name`, `forward_probability`
+        (node1 -> node2, edge type `ta`) and `backward_probability` (node2 -> node1, edge type `at`).
+    """
     pivot = (edge_type_probabilities
              .pivot_table(index=["node1_name", "node2_name"], columns="edge_type",
                           values="probability", aggfunc="sum", fill_value=0.0)
@@ -203,6 +211,15 @@ def find_bidirectional_edges(edge_type_probabilities, min_probability=0.1):
 
 
 def find_cycles_in_edgeset(edgeset):
+    """Find directed cycles in a causal graph edge set.
+
+    Only directed edges are used; undirected (TAIL-TAIL) edges are skipped.
+
+    :param edgeset: An edge set DataFrame like the `'edgeset'` returned by
+        [parse_graph_json](#parse_graph_json).
+    :returns: List of cycles; each cycle is a list of node names, starting and
+        ending with the same node, e.g. `[["A", "B", "C", "A"]]`.
+    """
     import igraph as ig
     directed = []
     for _, row in edgeset.iterrows():
@@ -214,3 +231,40 @@ def find_cycles_in_edgeset(edgeset):
         return []
     g = ig.Graph.TupleList(directed, directed=True)
     return find_cycles(g)
+
+def markov_check(data, params, test, graph, parallelized=True):
+    """Check whether a causal graph fits the data using Tetrad's Markov checker.
+
+    :param data: Tetrad data object from [transform_pandasdf_to_tetrad_boxdataset](data.html#transform_pandasdf_to_tetrad_boxdataset).
+    :param params: Tetrad Parameters object from the same function.
+    :param test: Independence test from [use_fisher_z](independence.html#use_fisher_z).
+    :param graph: Causal graph from [algorithm_fges](algorithm.html#algorithm_fges) or [algorithm_boss](algorithm.html#algorithm_boss).
+    :param parallelized: True to run the tests in parallel.
+    :returns: dict with `'summary'` (summary statistics) and `'results'` (one row per test).
+        `summary['fraction_dependent_independent']` is the share of the graph's
+        predictions the data contradicts (lower is better).
+    """
+    import edu.cmu.tetrad.search as ts
+
+    mc = ts.MarkovCheck(graph, test.getTest(data, params), ts.ConditioningSetType.ORDERED_LOCAL_MARKOV)
+    mc.setParallelized(parallelized)
+    mc.generateAllResults()
+
+    summary = {
+        "num_tests_independent": int(mc.getNumTests(True)),
+        "fraction_dependent_independent": float(mc.getFractionDependent(True)),
+        "ad_p_independent": float(mc.getAndersonDarlingP(True)),
+        "ks_p_independent": float(mc.getKsPValue(True)),
+        "num_tests_dependent": int(mc.getNumTests(False)),
+        "fraction_dependent_dependent": float(mc.getFractionDependent(False)),
+    }
+
+    rows = []
+    for implied_independent in (True, False):
+        results = mc.getResults(implied_independent)
+        for i in range(results.size()):
+            r = results.get(i)
+            rows.append({"fact": str(r.getFact()), "p_value": float(r.getPValue()),
+                         "implied_independent": implied_independent})
+
+    return {"summary": summary, "results": pd.DataFrame(rows)}
