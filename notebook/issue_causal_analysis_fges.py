@@ -906,9 +906,25 @@ def vis_igraph(nodes, edges, output_path, seed=1):
 
 test = independence.use_fisher_z(state["params"], alpha=0.01)
 mc = graph.markov_check(state["data"], state["params"], test, result["graph"])
-print(mc["summary"])
+display(pd.Series(mc["summary"], name="value").to_frame())
 mc["results"].head()
 
+
+# ### How to Read the Markov Check
+# 
+# The Markov check tests whether the causal graph fits the data. The graph makes predictions about which variables should be unrelated, and the Markov checker tests each prediction against the data.
+# 
+# **Summary line:** focus on two numbers:
+# - `num_tests_independent`: how many "these two things are unrelated" predictions the graph made.
+# - `fraction_dependent_independent`: the share of those predictions the data proved wrong. **Lower is better.**
+#   - Around 1% or less: the graph fits the data well (about 1% can be wrong just by chance).
+#   - A few percent: some predictions don't hold.
+#   - Much higher (e.g. 43%): the graph doesn't match the data.
+# 
+# **Table:** each row is one prediction:
+# - `fact`: the prediction. `A _||_ B` means "A and B are unrelated," and `A _||_ B | C` means "A and B are unrelated once you know C."
+# - `p_value`: below 0.01 means the data says they *are* related, so the prediction was wrong. Above 0.01 means the data agrees.
+# - `implied_independent`: `True` means it is an "unrelated" prediction.
 
 # ### Full Causal Graph 1-PNEF Trimmed 
 # 

@@ -13,25 +13,26 @@ wrappers around Tetrad's Java classes:
 - `api.tetrad` -- start the JVM and load the Tetrad JAR
 - `api.data` -- convert pandas DataFrames into Tetrad data and initialize search state
 - `api.score` -- configure scoring functions (e.g., SEM BIC)
+- `api.independence` -- configure independence tests (e.g., Fisher Z)
 - `api.bootstrapping` -- configure bootstrap resampling parameters
 - `api.knowledge` -- load domain knowledge constraints
 - `api.algorithm` -- run causal search algorithms (FGES, BOSS)
-- `api.graph` -- serialize and parse Tetrad graph objects, apply PNEF thresholds
+- `api.graph` -- serialize, parse and inspect Tetrad graphs (cycles, bidirectional edges, Markov check)
 
 ## Usage
 
-Call `api.tetrad.start()` once before using any other module to start the
+Call `api.tetrad.tetrad_jvm_start()` once before using any other module to start the
 JVM and load the Tetrad JAR::
 
     from api import tetrad, data, score, algorithm
-    tetrad.start("path/to/tetrad-current.jar")
+    tetrad.tetrad_jvm_start("path/to/tetrad-current.jar")
 
 ## Notebook
 
-- [Issue Causal Analysis](notebook/issue_causal_analysis.html) --
-  end-to-end causal discovery workflow demonstrating data preparation,
-  null-variable bootstrapped search, 1-PNEF threshold derivation,
-  and final causal graph inspection.
+- [Issue Causal Analysis (FGES)](notebook/issue_causal_analysis_fges.html) --
+  end-to-end causal discovery workflow using FGES.
+- [Issue Causal Analysis (BOSS)](notebook/issue_causal_analysis_boss.html) --
+  end-to-end causal discovery workflow using BOSS.
 """
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "graph",
     "knowledge",
     "score",
+    "independence",
 ]
