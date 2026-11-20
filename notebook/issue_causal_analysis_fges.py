@@ -39,7 +39,7 @@
 # 
 # **VS Code** (requires the `ms-python.python` and `ms-toolsai.jupyter` extensions)
 # 
-# 1. Open `notebook/issue_causal_analysis.ipynb` in VS Code.
+# 1. Open `notebook/issue_causal_analysis_fges.ipynb` in VS Code.
 # 2. Click the kernel picker (top-right of the notebook) and select the **`pykumu`** conda environment.
 # 3. Click **Run All**.
 # 
@@ -50,7 +50,7 @@
 # 
 # ```bash
 # cd notebook
-# jupyter lab issue_causal_analysis.ipynb
+# jupyter lab issue_causal_analysis_fges.ipynb
 # ```
 # 
 # In the browser: **Kernel → Change Kernel → `pykumu`**, then **Run → Run All Cells**.
@@ -62,7 +62,7 @@
 # 
 # ```bash
 # cd notebook
-# jupyter nbconvert --to notebook --execute issue_causal_analysis.ipynb --inplace
+# jupyter nbconvert --to notebook --execute issue_causal_analysis_fges.ipynb --inplace
 # ```
 # 
 # > ⚠️ In all three cases you must be in the `notebook/` directory (or have it as the working directory), otherwise the notebook can't find `resources/` or write to `pykumu_outputs/`.
@@ -72,7 +72,7 @@
 # ### 1.5. Verify Outputs
 # 
 # - `pykumu_outputs/` — intermediate CSVs and search graphs (`null_search_graph.json`, `domain_search_graph.json`).
-# - `causal_graph/` — interactive HTMLs (`causal_graph_full.html`, `causal_graph_subgraph.html`).
+# - `causal_graph/` — interactive HTMLs (`fges_causal_graph_full.html`, `fges_causal_graph_subgraph.html`).
 # 
 # ### 1.6. Output Comparison with Kumu
 # 
@@ -274,12 +274,6 @@ else:
 dt.head()
 
 
-# In[ ]:
-
-
-dt.head()
-
-
 # With respect to data missing due to inactivity during a given time period, any measures of features (counts) related to commits should all be 0.
 
 # In[ ]:
@@ -437,7 +431,7 @@ else:
 # In[ ]:
 
 
-dt.head()
+lag_dt.head()
 
 
 # ## Non-Parametric Transformation
@@ -535,7 +529,7 @@ binarized_lag_dt.to_csv(os.path.join(py_output_dir, "binarized_lag_dt.csv"), ind
 # In[ ]:
 
 
-dt.head()
+binarized_lag_dt.head()
 
 
 # ### Add Null Features
@@ -570,7 +564,7 @@ else:
 # In[ ]:
 
 
-dt.head()
+nv_lag_dt.head()
 
 
 # ### Keep only 5 null indicator features
@@ -662,7 +656,7 @@ if eval_fges:
 # 
 # We now have our causal bootstrap graph as a .json file, which is output by Tetrad. Let's parse it into a tabular format to provide further intuition on how the 1 PNEF threshold is being determined. 
 # 
-# The nodes contain all our variables and null features In the off_chance a feature does not have any edge to it, this table allow us to still show it on the graph, as it would not appear on the "edge list" table.
+# The nodes contain all our variables and null features In the off chance a feature does not have any edge to it, this table allow us to still show it on the graph, as it would not appear on the "edge list" table.
 # 
 
 # In[ ]:
@@ -698,7 +692,7 @@ parsed_graph["edge_type_probabilities"].to_csv(os.path.join(py_output_dir, "null
 
 # ### Deriving 1 PNEF
 # 
-# As noted, our interest is to derive a threshold for the final causal search, using the information of this bootstrapped null feature causal search between the actual variables, and the random features. By this randome dge definition, our first step is to subset the `edgeset`table  to contain only the edge pairs that include null variables. A sample is shown below of the table where at least one of the two nodes is nv:
+# As noted, our interest is to derive a threshold for the final causal search, using the information of this bootstrapped null feature causal search between the actual variables, and the random features. By this randome edge definition, our first step is to subset the `edgeset`table to contain only the edge pairs that include null variables. A sample is shown below of the table where at least one of the two nodes is nv:
 # 
 
 # In[ ]:
@@ -808,6 +802,54 @@ if eval_fges_domain:
     shutil.copy2(filepath, os.path.join(py_output_dir, "domain_search_graph.json"))
 
 
+# ### Markov Check
+# 
+# We check whether the final causal graph fits the data
+# 
+# **How to Read the Markov Check**
+# 
+# The Markov check tests whether the causal graph fits the data. The graph makes predictions about which variables should be unrelated, and the Markov checker tests each prediction against the data.
+# 
+# **Summary line:** focus on two numbers:
+# - `num_tests_independent`: how many "these two things are unrelated" predictions the graph made.
+# - `fraction_dependent_independent`: the share of those predictions the data proved wrong. **Lower is better.**
+#   - Around 1% or less: the graph fits the data well (about 1% can be wrong just by chance).
+#   - A few percent: some predictions don't hold.
+#   - Much higher (e.g. 43%): the graph doesn't match the data.
+# 
+# **Table:** each row is one prediction:
+# - `fact`: the prediction. `A _||_ B` means "A and B are unrelated," and `A _||_ B | C` means "A and B are unrelated once you know C."
+# - `p_value`: below 0.01 means the data says they *are* related, so the prediction was wrong. Above 0.01 means the data agrees.
+# - `implied_independent`: `True` means it is an "unrelated" prediction.
+
+# In[ ]:
+
+
+test = independence.use_fisher_z(state["params"], alpha=0.01)
+mc = graph.markov_check(state["data"], state["params"], test, result["graph"])
+display(pd.Series(mc["summary"], name="value").to_frame())
+mc["results"].head()
+
+
+# In[ ]:
+
+
+options = {
+    "default": {},
+    "fraction_resample=0.5": {"fraction_resample": 0.5},
+    "LOCAL_MARKOV": {"condition_set_type": "LOCAL_MARKOV"},
+    "find_smallest_subset": {"find_smallest_subset": True},
+    "knowledge": {"knowledge": state["knowledge"]},
+}
+
+rows = {}
+for name, kwargs in options.items():
+    mc = graph.markov_check(state["data"], state["params"], test, result["graph"], **kwargs)
+    rows[name] = mc["summary"]
+
+pd.DataFrame(rows).T
+
+
 # ## Applying 1PNEF Threshold
 # 
 # We load the final causal search, and then apply the 1PNEF threshold derived from the prior causal search here. A sample of the causal graph nodes and edges is shown below:
@@ -895,54 +937,6 @@ def vis_igraph(nodes, edges, output_path, seed=1):
         f'<iframe src="data:text/html;base64,{encoded}" '
         f'width="100%" height="700" frameborder="0"></iframe>'
     ))
-
-
-# ### Markov Check
-# 
-# We check whether the final causal graph fits the data
-# 
-# **How to Read the Markov Check**
-# 
-# The Markov check tests whether the causal graph fits the data. The graph makes predictions about which variables should be unrelated, and the Markov checker tests each prediction against the data.
-# 
-# **Summary line:** focus on two numbers:
-# - `num_tests_independent`: how many "these two things are unrelated" predictions the graph made.
-# - `fraction_dependent_independent`: the share of those predictions the data proved wrong. **Lower is better.**
-#   - Around 1% or less: the graph fits the data well (about 1% can be wrong just by chance).
-#   - A few percent: some predictions don't hold.
-#   - Much higher (e.g. 43%): the graph doesn't match the data.
-# 
-# **Table:** each row is one prediction:
-# - `fact`: the prediction. `A _||_ B` means "A and B are unrelated," and `A _||_ B | C` means "A and B are unrelated once you know C."
-# - `p_value`: below 0.01 means the data says they *are* related, so the prediction was wrong. Above 0.01 means the data agrees.
-# - `implied_independent`: `True` means it is an "unrelated" prediction.
-
-# In[ ]:
-
-
-test = independence.use_fisher_z(state["params"], alpha=0.01)
-mc = graph.markov_check(state["data"], state["params"], test, result["graph"])
-display(pd.Series(mc["summary"], name="value").to_frame())
-mc["results"].head()
-
-
-# In[ ]:
-
-
-options = {
-    "default": {},
-    "fraction_resample=0.5": {"fraction_resample": 0.5},
-    "LOCAL_MARKOV": {"condition_set_type": "LOCAL_MARKOV"},
-    "find_smallest_subset": {"find_smallest_subset": True},
-    "knowledge": {"knowledge": state["knowledge"]},
-}
-
-rows = {}
-for name, kwargs in options.items():
-    mc = graph.markov_check(state["data"], state["params"], test, result["graph"], **kwargs)
-    rows[name] = mc["summary"]
-
-pd.DataFrame(rows).T
 
 
 # ### Full Causal Graph 1-PNEF Trimmed 

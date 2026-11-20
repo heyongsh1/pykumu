@@ -13,11 +13,13 @@ files into tabular DataFrames.
 
 try:
     import edu.cmu.tetrad.algcomparison.algorithm.oracle.cpdag as cpdag
+    import edu.cmu.tetrad.search as ts
     from edu.cmu.tetrad.util import Params
 except ImportError:
     pass  
 
 import json
+import igraph as ig
 
 import pandas as pd
 def transform_graph_java_to_graph_json(graph):
@@ -220,7 +222,6 @@ def find_cycles_in_edgeset(edgeset):
     :returns: List of cycles; each cycle is a list of node names, starting and
         ending with the same node, e.g. `[["A", "B", "C", "A"]]`.
     """
-    import igraph as ig
     directed = []
     for _, row in edgeset.iterrows():
         if row["endpoint1"] == "TAIL" and row["endpoint2"] == "ARROW":
@@ -250,7 +251,6 @@ def markov_check(data, params, test, graph, knowledge=None, fraction_resample=1.
         `summary['fraction_dependent_independent']` is the share of the graph's
         predictions the data contradicts (lower is better).
     """
-    import edu.cmu.tetrad.search as ts
     set_type = getattr(ts.ConditioningSetType, condition_set_type)  # text -> Tetrad option
     mc = ts.MarkovCheck(graph, test.getTest(data, params), set_type)
     mc.setParallelized(parallelized)
@@ -272,8 +272,7 @@ def markov_check(data, params, test, graph, knowledge=None, fraction_resample=1.
     rows = []
     for implied_independent in (True, False):
         results = mc.getResults(implied_independent)
-        for i in range(results.size()):
-            r = results.get(i)
-            rows.append({"fact": str(r.getFact()), "p_value": float(r.getPValue()),
+        for r in results:
+         rows.append({"fact": str(r.getFact()), "p_value": float(r.getPValue()),
                          "implied_independent": implied_independent})
     return {"summary": summary, "results": pd.DataFrame(rows)}

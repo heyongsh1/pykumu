@@ -48,7 +48,7 @@ Regenerates `docs/api/` (via `pdoc`) and `docs/notebook/` (via `jupyter nbconver
 
 ## Running the notebook
 
-End-to-end causal discovery workflow lives in [notebook/issue_causal_analysis.ipynb](notebook/issue_causal_analysis.ipynb). Open it in Jupyter or VS Code, select the `pykumu` kernel, and run all cells. See the notebook's Setup section for the full step-by-step.
+End-to-end causal discovery workflow lives in 2 different notebooks one alogrithm [notebook/issue_causal_analysis_fges.ipynb](notebook/issue_causal_analysis_fges.ipynb) & [notebook/issue_causal_analysis_boss.ipynb](notebook/issue_causal_analysis_boss.ipynb). Open it in Jupyter or VS Code, select the `pykumu` kernel, and run all cells. See the notebook's Setup section for the full step-by-step.
 
 ## Stay up-to-date
 
