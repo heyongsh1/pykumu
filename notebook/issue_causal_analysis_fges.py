@@ -67,7 +67,7 @@
 # 
 # > ⚠️ In all three cases you must be in the `notebook/` directory (or have it as the working directory), otherwise the notebook can't find `resources/` or write to `pykumu_outputs/`.
 # 
-# > ⚠️ If the causal search runs fail or hang, make sure the `num_threads` parameter on `algorithm.algorithm_boss` / `algorithm.algorithm_fges` is set to `5`.
+# > ⚠️ If the causal search runs fail or hang, make sure the `num_threads` parameter on `algorithm.algorithm_fges` is set to `5`.
 # 
 # ### 1.5. Verify Outputs
 # 

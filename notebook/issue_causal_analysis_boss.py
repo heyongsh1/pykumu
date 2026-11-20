@@ -50,7 +50,7 @@
 # 
 # ```bash
 # cd notebook
-# jupyter lab issue_causal_analysis.ipynb
+# jupyter lab issue_causal_analysis_boss.ipynb
 # ```
 # 
 # In the browser: **Kernel → Change Kernel → `pykumu`**, then **Run → Run All Cells**.
@@ -62,17 +62,17 @@
 # 
 # ```bash
 # cd notebook
-# jupyter nbconvert --to notebook --execute issue_causal_analysis.ipynb --inplace
+# jupyter nbconvert --to notebook --execute boss_issue_causal_analysis.ipynb --inplace
 # ```
 # 
 # > ⚠️ In all three cases you must be in the `notebook/` directory (or have it as the working directory), otherwise the notebook can't find `resources/` or write to `pykumu_outputs/`.
 # 
-# > ⚠️ If the causal search runs fail or hang, make sure the `num_threads` parameter on `algorithm.algorithm_boss` / `algorithm.algorithm_fges` is set to `5`.
+# > ⚠️ If the causal search runs fail or hang, make sure the `num_threads` parameter on `algorithm.algorithm_boss' is set to `5`.
 # 
 # ### 1.5. Verify Outputs
 # 
 # - `pykumu_outputs/` — intermediate CSVs and search graphs (`null_search_graph.json`, `domain_search_graph.json`).
-# - `causal_graph/` — interactive HTMLs (`causal_graph_full.html`, `causal_graph_subgraph.html`).
+# - `causal_graph/` — interactive HTMLs (`boss_causal_graph_full.html`, `boss_causal_graph_subgraph.html`).
 # 
 # ### 1.6. Output Comparison with Kumu
 # 
@@ -268,12 +268,6 @@ else:
     print("Skipped start parsing (column missing).")
 
 
-# In[12]:
-
-
-dt.head()
-
-
 # In[13]:
 
 
@@ -434,10 +428,10 @@ else:
     print("Skipped feature deletion (columns already removed).")
 
 
-# In[25]:
+# In[ ]:
 
 
-dt.head()
+lag_dt.head()
 
 
 # ## Non-Parametric Transformation
@@ -532,10 +526,10 @@ else:
 binarized_lag_dt.to_csv(os.path.join(py_output_dir, "binarized_lag_dt.csv"), index=False)
 
 
-# In[29]:
+# In[ ]:
 
 
-dt.head()
+binarized_lag_dt.head()
 
 
 # ### Add Null Features
@@ -567,10 +561,10 @@ else:
         nv_lag_dt[["silence", "nv-silence"]].head()
 
 
-# In[31]:
+# In[ ]:
 
 
-dt.head()
+nv_lag_dt.head()
 
 
 # ### Keep only 5 null indicator features
@@ -666,7 +660,7 @@ if eval_boss:
 # 
 # We now have our causal bootstrap graph as a .json file, which is output by Tetrad. Let's parse it into a tabular format to provide further intuition on how the 1 PNEF threshold is being determined. 
 # 
-# The nodes contain all our variables and null features In the off_chance a feature does not have any edge to it, this table allow us to still show it on the graph, as it would not appear on the "edge list" table.
+# The nodes contain all our variables and null features In the off chance a feature does not have any edge to it, this table allow us to still show it on the graph, as it would not appear on the "edge list" table.
 # 
 
 # In[36]:
@@ -702,7 +696,7 @@ parsed_graph["edge_type_probabilities"].to_csv(os.path.join(py_output_dir, "null
 
 # ### Deriving 1 PNEF
 # 
-# As noted, our interest is to derive a threshold for the final causal search, using the information of this bootstrapped null feature causal search between the actual variables, and the random features. By this randome dge definition, our first step is to subset the `edgeset`table  to contain only the edge pairs that include null variables. A sample is shown below of the table where at least one of the two nodes is nv:
+# As noted, our interest is to derive a threshold for the final causal search, using the information of this bootstrapped null feature causal search between the actual variables, and the random features. By this randome edge definition, our first step is to subset the `edgeset`table  to contain only the edge pairs that include null variables. A sample is shown below of the table where at least one of the two nodes is nv:
 # 
 
 # In[39]:
