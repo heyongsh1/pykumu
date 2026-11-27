@@ -1,2 +1,28 @@
 project:
   data_filepath: resources/1_openssl_social_smells_timeline.csv
+  knowledge_filepath: resources/knowledge_box.txt
+
+search:
+  penalty_discount: 2
+  number_resampling: 10
+  seed: 32
+  fges_percent_resample_size: 90
+  boss_percent_resample_size: 100
+
+markov_check:
+  alpha: 0.01
+
+columns:
+  # Short names for Kaiaulu's long column names (keeps graph labels readable)
+  rename:
+    start_day: start
+    missing_links: mis_link
+    radio_silence: silence
+    code_only_devs: code_dev
+    code_files: file
+    ml_only_devs: mail_dev
+    ml_threads: thread
+    n_commits: commit
+    sum_churn: churn
+  # Columns that get a next-period copy (named with a "2" at the end)
+  lag: [org_silo, mis_link, silence, code_dev, file, mail_dev, thread, commit, churn]

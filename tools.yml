@@ -1,0 +1,5 @@
+# Paths to the tools Pykumu uses.
+# Paths are relative to the notebook/ folder, where the notebooks run.
+
+# Tetrad jar: https://github.com/cmu-phil/py-tetrad/tree/main/pytetrad/resources
+tetrad: resources/tetrad-current.jar
