@@ -10,8 +10,8 @@ search:
   boss_percent_resample_size: 100
 
 markov_check:
-  alpha: 0.01
-
+  alpha: 0.0
+   
 columns:
   # Short names for Kaiaulu's long column names (keeps graph labels readable)
   rename:
@@ -26,3 +26,14 @@ columns:
     sum_churn: churn
   # Columns that get a next-period copy (named with a "2" at the end)
   lag: [org_silo, mis_link, silence, code_dev, file, mail_dev, thread, commit, churn]
+
+  # Highly correlated columns removed before the search
+  drop: [activity_0, activity_2, org_silo, org_silo2]
+  # CVEs with this many time periods or fewer are removed
+  max_short_periods: 7
+    # Column that splits the data into separate timelines (one per CVE); leave empty if there is only one timeline
+  group: cve_id
+
+graph:
+  # Variables shown in the subgraph
+  nodes_of_interest: [silence, silence2, mis_link, mis_link2, code_dev, code_dev2, churn, churn2, commit, commit2]
